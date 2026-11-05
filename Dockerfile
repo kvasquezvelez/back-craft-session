@@ -7,8 +7,9 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY src ./src
 COPY scripts ./scripts
+RUN npm run build
 
 USER node
 EXPOSE 3000
 
-CMD ["node", "src/server.js"]
+CMD ["node", "dist/server.js"]

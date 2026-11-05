@@ -1,4 +1,7 @@
 node_modules/
+dist/
+build/
+function.zip
 .env
 .env.*
 !.env.example

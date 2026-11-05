@@ -69,9 +69,9 @@ class VtexClient {
   async findMasterDataDocuments({ entity, field, value, fields, size = 2 }) {
     const params = new URLSearchParams({
       _fields: fields.join(','),
-      _where: `${field}=${value}`,
       _size: String(size),
     })
+    params.set(field, value)
     const documents = await this.request(
       `/api/dataentities/${encodeURIComponent(entity)}/search?${params}`,
     )

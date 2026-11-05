@@ -36,7 +36,8 @@ test('consulta una persona en SC usando el campo configurado', async () => {
   })
 
   assert.equal(requestedUrl.pathname, '/api/dataentities/SC/search')
-  assert.equal(requestedUrl.searchParams.get('_where'), 'email=persona@example.com')
+  assert.equal(requestedUrl.searchParams.get('email'), 'persona@example.com')
+  assert.equal(requestedUrl.searchParams.has('_where'), false)
   assert.equal(result[0].id, 'SC-DOC-1')
 })
 
