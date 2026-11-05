@@ -73,16 +73,14 @@ SC_PERSON_FIELD=correoelectronico
 ## Ejecutar
 
 ```bash
-pnpm install
-pnpm start
+npm install
+npm start
 ```
-
-También puede utilizarse `npm install` y `npm start` si no tienes pnpm disponible.
 
 En desarrollo:
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Comprobar el servidor:
@@ -126,12 +124,40 @@ curl -X POST http://localhost:3000/api/orders/ORDER-ID-01/confirm-reservation \
   -H "x-webhook-secret: $WEBHOOK_SECRET"
 ```
 
+### Consultar el estado por correo
+
+Este endpoint puede ser consumido por el front y usa el correo como identificador:
+
+```http
+GET /api/reservations/status?email=persona@example.com
+```
+
+Ejemplo local:
+
+```bash
+curl --get http://localhost:3000/api/reservations/status \
+  --data-urlencode 'email=persona@example.com'
+```
+
+Respuesta:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "email": "persona@example.com",
+    "status": "confirmado",
+    "confirmed": true
+  }
+}
+```
+
 ## Configurar el Hook en QA
 
 Con el backend desplegado en una URL HTTPS, configura `PUBLIC_BASE_URL` y ejecuta:
 
 ```bash
-pnpm hook:configure
+npm run hook:configure
 ```
 
 El script registra el filtro `status = "invoiced"`. VTEX permite un Hook por appKey, por lo que se recomienda utilizar una appKey exclusiva para esta integración.
@@ -139,5 +165,5 @@ El script registra el filtro `status = "invoiced"`. VTEX permite un Hook por app
 ## Pruebas
 
 ```bash
-pnpm test
+npm test
 ```
