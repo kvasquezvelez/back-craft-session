@@ -1,25 +1,15 @@
-const serverless = require("serverless-http");
-const app = require("./app");
- 
-const serverlessHandler = serverless(app);
- 
-exports.handler = async (event, context) => {
-    context.callbackWaitsForEmptyEventLoop = false;
- 
-    try {
-        return await serverlessHandler(event, context);
-    } catch (error) {
-        console.error("Error ejecutando Lambda:", error);
- 
-        return {
-            statusCode: 500,
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                success: false,
-                message: "Error interno del servidor"
-            })
-        };
-    }
-};
+'use strict'
+
+const serverless = require('serverless-http')
+const { createApp } = require('./app')
+const { VtexClient } = require('./clients/vtex.client')
+const { loadConfig, validateRuntimeConfig } = require('./config/index')
+const logger = require('./logger')
+
+const config = loadConfig()
+validateRuntimeConfig(config)
+
+const vtexClient = new VtexClient(config.vtex)
+const app = createApp({ config, vtexClient, logger })
+
+module.exports.handler = serverless(app)

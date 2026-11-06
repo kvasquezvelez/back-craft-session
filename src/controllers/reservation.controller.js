@@ -3,7 +3,9 @@
 function createReservationController({ reservationQueryService, logger }) {
   return {
     async getStatus(request, response) {
-      const result = await reservationQueryService.getStatusByEmail(request.query.email)
+      const result = await reservationQueryService.getStatusByReservationId(
+        request.query.reservationId,
+      )
       logger.info('Estado de reserva consultado', {
         requestId: request.requestId,
         confirmed: result.confirmed,

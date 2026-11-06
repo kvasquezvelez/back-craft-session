@@ -13,7 +13,7 @@ function parseBoolean(value, defaultValue) {
 }
 
 function loadConfig(env = process.env) {
-  const timeoutMs = Number(env.VTEX_REQUEST_TIMEOUT_MS || 1400)
+  const timeoutMs = Number(env.VTEX_REQUEST_TIMEOUT_MS || 10000)
   const port = Number(env.PORT || 3000)
 
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -37,12 +37,12 @@ function loadConfig(env = process.env) {
     },
     service: {
       skuIds: splitCsv(env.CRAFT_SERVICE_SKU_IDS || '663375276'),
+      customAppId: env.CRAFT_SESSION_CUSTOM_APP_ID || 'craft-session',
+      customField: env.CRAFT_SESSION_CUSTOM_FIELD || 'reservationId',
     },
     masterData: {
       entity: env.MASTER_DATA_ENTITY || 'SC',
-      personField: env.SC_PERSON_FIELD || env.SC_LOOKUP_FIELD || 'email',
-      personOrderPath:
-        env.SC_PERSON_ORDER_PATH || env.SC_LOOKUP_ORDER_PATH || 'clientProfileData.email',
+      reservationIdField: env.SC_RESERVATION_ID_FIELD || 'reservationId',
       statusField: env.SC_STATUS_FIELD || 'statusreserva',
       confirmedValue: env.SC_CONFIRMED_VALUE || 'confirmado',
       requireUniqueMatch: parseBoolean(env.SC_REQUIRE_UNIQUE_MATCH, true),

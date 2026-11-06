@@ -1,7 +1,7 @@
 'use strict'
 
 const { AppError } = require('../errors/app-error')
-const { getByPath } = require('../utils/object')
+const { getReservationIdFromOrder } = require('../utils/reservation-id')
 const { findCraftService } = require('./craft-service.service')
 
 class OrderConfirmationService {
@@ -41,38 +41,31 @@ class OrderConfirmationService {
       return { outcome: 'ignored-without-service', orderId }
     }
 
-    const masterData = this.config.masterData
-    const rawPersonValue = getByPath(order, masterData.personOrderPath)
-    if (rawPersonValue === undefined || rawPersonValue === null) {
-      throw new AppError(
-        `La orden no contiene la persona en ${masterData.personOrderPath}`,
-        { statusCode: 503, code: 'person_not_found_in_order' },
-      )
-    }
-    const personValue = String(rawPersonValue).trim().toLowerCase()
-    if (!personValue) {
-      throw new AppError(
-        `La orden no contiene la persona en ${masterData.personOrderPath}`,
-        { statusCode: 503, code: 'person_not_found_in_order' },
-      )
+    const reservationId = getReservationIdFromOrder(order, this.config.service)
+    if (!reservationId) {
+      throw new AppError('La orden no contiene un reservationId valido', {
+        statusCode: 503,
+        code: 'reservation_id_not_found_in_order',
+      })
     }
 
+    const masterData = this.config.masterData
     const documents = await this.vtexClient.findMasterDataDocuments({
       entity: masterData.entity,
-      field: masterData.personField,
-      value: personValue,
-      fields: ['id', masterData.personField, masterData.statusField],
+      field: masterData.reservationIdField,
+      value: reservationId,
+      fields: ['id', masterData.reservationIdField, masterData.statusField],
       size: masterData.requireUniqueMatch ? 2 : 1,
     })
 
     if (!documents.length) {
-      throw new AppError('No se encontro una reserva para la persona de la orden', {
+      throw new AppError('No se encontro la reserva indicada por la orden', {
         statusCode: 503,
         code: 'reservation_not_found',
       })
     }
     if (masterData.requireUniqueMatch && documents.length > 1) {
-      throw new AppError('Existe mas de una reserva para la persona de la orden', {
+      throw new AppError('Existe mas de una reserva con el mismo reservationId', {
         statusCode: 503,
         code: 'multiple_reservations_found',
       })
@@ -84,6 +77,7 @@ class OrderConfirmationService {
         outcome: 'already-confirmed',
         orderId,
         documentId: reservation.id,
+        reservationId,
         serviceMatch: service.reason,
       }
     }
@@ -96,6 +90,7 @@ class OrderConfirmationService {
       outcome: 'confirmed',
       orderId,
       documentId: reservation.id,
+      reservationId,
       serviceMatch: service.reason,
     }
   }
