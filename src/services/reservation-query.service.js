@@ -24,7 +24,7 @@ class ReservationQueryService {
       field: masterData.reservationIdField,
       value: reservationId,
       fields: ['id', masterData.reservationIdField, masterData.statusField],
-      size: 2,
+      size: 100,
     })
 
     if (!documents.length) {
@@ -33,20 +33,20 @@ class ReservationQueryService {
         code: 'reservation_not_found',
       })
     }
-    if (documents.length > 1) {
-      throw new AppError('Existe mas de una reserva para el reservationId enviado', {
-        statusCode: 409,
-        code: 'multiple_reservations_found',
-      })
-    }
-
-    const reservation = documents[0]
-    const status = reservation[masterData.statusField] ?? null
+    const statuses = documents.map(
+      (reservation) => reservation[masterData.statusField] ?? null,
+    )
+    const confirmed = statuses.every(
+      (status) => status === masterData.confirmedValue,
+    )
+    const uniqueStatuses = [...new Set(statuses)]
+    const status = uniqueStatuses.length === 1 ? uniqueStatuses[0] : 'parcial'
 
     return {
       reservationId,
       status,
-      confirmed: status === masterData.confirmedValue,
+      confirmed,
+      quantity: documents.length,
     }
   }
 }

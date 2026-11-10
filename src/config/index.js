@@ -7,11 +7,6 @@ function splitCsv(value) {
     .filter(Boolean)
 }
 
-function parseBoolean(value, defaultValue) {
-  if (value === undefined || value === '') return defaultValue
-  return String(value).toLowerCase() === 'true'
-}
-
 function loadConfig(env = process.env) {
   const timeoutMs = Number(env.VTEX_REQUEST_TIMEOUT_MS || 10000)
   const port = Number(env.PORT || 3000)
@@ -27,7 +22,7 @@ function loadConfig(env = process.env) {
     nodeEnv: env.NODE_ENV || 'development',
     port,
     webhookSecret: env.WEBHOOK_SECRET || '',
-    webhookOrderStatus: env.VTEX_WEBHOOK_STATUS || 'invoiced',
+    webhookOrderStatus: env.VTEX_WEBHOOK_STATUS || 'payment-approved',
     vtex: {
       account: env.VTEX_ACCOUNT || '',
       environment: env.VTEX_ENVIRONMENT || 'vtexcommercestable',
@@ -38,14 +33,19 @@ function loadConfig(env = process.env) {
     service: {
       skuIds: splitCsv(env.CRAFT_SERVICE_SKU_IDS || '663375276'),
       customAppId: env.CRAFT_SESSION_CUSTOM_APP_ID || 'craft-session',
-      customField: env.CRAFT_SESSION_CUSTOM_FIELD || 'reservationId',
+      customField: env.CRAFT_SESSION_CUSTOM_FIELD || 'reservationGroupIds',
     },
     masterData: {
       entity: env.MASTER_DATA_ENTITY || 'SC',
       reservationIdField: env.SC_RESERVATION_ID_FIELD || 'reservationId',
       statusField: env.SC_STATUS_FIELD || 'statusreserva',
       confirmedValue: env.SC_CONFIRMED_VALUE || 'confirmado',
-      requireUniqueMatch: parseBoolean(env.SC_REQUIRE_UNIQUE_MATCH, true),
+      orderIdField: env.SC_ORDER_ID_FIELD || 'orderId',
+      confirmedAtField: env.SC_CONFIRMED_AT_FIELD || 'confirmedAt',
+      quantityField: env.SC_QUANTITY_FIELD || 'quantity',
+      emailPrimaryField: env.SC_EMAIL_PRIMARY_FIELD || 'emailPrimary',
+      emailSentField: env.SC_EMAIL_SENT_FIELD || 'emailSent',
+      emailSentAtField: env.SC_EMAIL_SENT_AT_FIELD || 'emailSentAt',
     },
   }
 }

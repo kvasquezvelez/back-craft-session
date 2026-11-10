@@ -35,6 +35,7 @@ test('consulta statusreserva usando reservationId como identificador', async () 
     reservationId: RESERVATION_ID,
     status: 'confirmado',
     confirmed: true,
+    quantity: 1,
   })
 })
 
@@ -59,16 +60,41 @@ test('responde 404 cuando reservationId no tiene una reserva', async () => {
   )
 })
 
-test('rechaza resultados ambiguos para el mismo reservationId', async () => {
+test('agrupa varios cupos con el mismo reservationId', async () => {
   const service = new ReservationQueryService({
     config,
     vtexClient: {
-      findMasterDataDocuments: async () => [{ id: 'SC-1' }, { id: 'SC-2' }],
+      findMasterDataDocuments: async () => [
+        { id: 'SC-1', statusreserva: 'confirmado' },
+        { id: 'SC-2', statusreserva: 'confirmado' },
+      ],
     },
   })
 
-  await assert.rejects(
-    service.getStatusByReservationId(RESERVATION_ID),
-    (error) => error.statusCode === 409 && error.code === 'multiple_reservations_found',
-  )
+  const result = await service.getStatusByReservationId(RESERVATION_ID)
+
+  assert.deepEqual(result, {
+    reservationId: RESERVATION_ID,
+    status: 'confirmado',
+    confirmed: true,
+    quantity: 2,
+  })
+})
+
+test('indica estado parcial cuando no todos los cupos estan confirmados', async () => {
+  const service = new ReservationQueryService({
+    config,
+    vtexClient: {
+      findMasterDataDocuments: async () => [
+        { id: 'SC-1', statusreserva: 'confirmado' },
+        { id: 'SC-2', statusreserva: 'pendiente' },
+      ],
+    },
+  })
+
+  const result = await service.getStatusByReservationId(RESERVATION_ID)
+
+  assert.equal(result.status, 'parcial')
+  assert.equal(result.confirmed, false)
+  assert.equal(result.quantity, 2)
 })

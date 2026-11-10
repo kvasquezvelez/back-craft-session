@@ -7,16 +7,22 @@ function normalizeReservationId(value) {
   return RESERVATION_ID_PATTERN.test(reservationId) ? reservationId : null
 }
 
-function getReservationIdFromOrder(order, { customAppId, customField }) {
+function getReservationIdsFromOrder(order, { customAppId, customField }) {
   const customApps = Array.isArray(order?.customData?.customApps)
     ? order.customData.customApps
     : []
   const customApp = customApps.find((app) => app?.id === customAppId)
-  return normalizeReservationId(customApp?.fields?.[customField])
+  const values = String(customApp?.fields?.[customField] || '').split(',')
+  return [...new Set(values.map(normalizeReservationId).filter(Boolean))]
+}
+
+function getReservationIdFromOrder(order, config) {
+  return getReservationIdsFromOrder(order, config)[0] || null
 }
 
 module.exports = {
   RESERVATION_ID_PATTERN,
   getReservationIdFromOrder,
+  getReservationIdsFromOrder,
   normalizeReservationId,
 }

@@ -12,7 +12,7 @@ function response(body, status = 200) {
   }
 }
 
-test('consulta una persona en SC usando el campo configurado', async () => {
+test('consulta cupos en SC usando reservationId como campo configurado', async () => {
   let requestedUrl
   const client = new VtexClient(
     {
@@ -30,13 +30,16 @@ test('consulta una persona en SC usando el campo configurado', async () => {
 
   const result = await client.findMasterDataDocuments({
     entity: 'SC',
-    field: 'email',
-    value: 'persona@example.com',
-    fields: ['id', 'email', 'statusreserva'],
+    field: 'reservationId',
+    value: '8dd028ea-52f8-4ea7-b0db-741654e80842',
+    fields: ['id', 'reservationId', 'statusreserva'],
   })
 
   assert.equal(requestedUrl.pathname, '/api/dataentities/SC/search')
-  assert.equal(requestedUrl.searchParams.get('email'), 'persona@example.com')
+  assert.equal(
+    requestedUrl.searchParams.get('reservationId'),
+    '8dd028ea-52f8-4ea7-b0db-741654e80842',
+  )
   assert.equal(requestedUrl.searchParams.has('_where'), false)
   assert.equal(result[0].id, 'SC-DOC-1')
 })
