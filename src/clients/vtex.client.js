@@ -17,12 +17,13 @@ class VtexClient {
   }
 
   async request(path, options = {}) {
+    const { includeHeaders = false, ...fetchOptions } = options
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.config.timeoutMs)
 
     try {
       const response = await this.fetch(`${this.baseUrl}${path}`, {
-        ...options,
+        ...fetchOptions,
         signal: controller.signal,
         headers: {
           Accept: 'application/json',
@@ -51,7 +52,7 @@ class VtexClient {
         )
       }
 
-      return body
+      return includeHeaders ? { body, headers: response.headers } : body
     } catch (error) {
       if (error.name === 'AbortError') {
         throw new VtexHttpError(`Timeout consultando VTEX: ${path}`, 504)
@@ -66,16 +67,25 @@ class VtexClient {
     return this.request(`/api/oms/pvt/orders/${encodeURIComponent(orderId)}`)
   }
 
-  async findMasterDataDocuments({ entity, field, value, fields, size = 2 }) {
-    const params = new URLSearchParams({
-      _fields: fields.join(','),
-      _size: String(size),
-    })
-    params.set(field, value)
-    const documents = await this.request(
-      `/api/dataentities/${encodeURIComponent(entity)}/search?${params}`,
+  getMasterDataDocument({ entity, id, fields }) {
+    const params = new URLSearchParams({ _fields: fields.join(',') })
+    return this.request(
+      `/api/dataentities/${encodeURIComponent(entity)}/documents/${encodeURIComponent(id)}?${params}`,
     )
-    return Array.isArray(documents) ? documents : []
+  }
+
+  async scrollMasterDataDocuments({ entity, field, value, fields, token }) {
+    const params = token
+      ? new URLSearchParams({ _token: token })
+      : new URLSearchParams({ _fields: fields.join(','), _size: '100', [field]: value })
+    const result = await this.request(
+      `/api/dataentities/${encodeURIComponent(entity)}/scroll?${params}`,
+      { includeHeaders: true },
+    )
+    return {
+      documents: Array.isArray(result.body) ? result.body : [],
+      token: result.headers?.get('X-VTEX-MD-TOKEN') || token,
+    }
   }
 
   updateMasterDataDocument(entity, documentId, fields) {

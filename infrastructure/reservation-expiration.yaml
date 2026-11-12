@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cancel pending Craft Session reservations after five hours.
+Parameters:
+  BackendFunctionArn:
+    Type: String
+    Description: ARN of the existing Craft Session Lambda function (unqualified).
+Resources:
+  ExpirationSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Check pending Craft Session reservations every minute.
+      ScheduleExpression: rate(1 minute)
+      State: ENABLED
+      Targets:
+        - Arn: !Ref BackendFunctionArn
+          Id: CraftSessionPendingExpiration
+          Input: '{"source":"craft-session.expiration","action":"expire-pending"}'
+  ExpirationPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref BackendFunctionArn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ExpirationSchedule.Arn
+Outputs:
+  ScheduleArn:
+    Value: !GetAtt ExpirationSchedule.Arn

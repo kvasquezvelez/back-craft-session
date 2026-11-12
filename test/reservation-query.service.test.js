@@ -1,100 +1,55 @@
 'use strict'
-
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const { ReservationQueryService } = require('../src/services/reservation-query.service')
+const { getReservationDocumentId } = require('../src/utils/reservation-id')
+const { loadConfig } = require('../src/config')
+const ID = 'a'.repeat(32)
 
-const RESERVATION_ID = '8dd028ea-52f8-4ea7-b0db-741654e80842'
-const config = {
-  masterData: {
-    entity: 'SC',
-    reservationIdField: 'reservationId',
-    statusField: 'statusreserva',
-    confirmedValue: 'confirmado',
-  },
-}
-
-test('consulta statusreserva usando reservationId como identificador', async () => {
+test('consulta un unico documento SC directamente y devuelve quantity', async () => {
   let query
   const service = new ReservationQueryService({
-    config,
-    vtexClient: {
-      findMasterDataDocuments: async (receivedQuery) => {
-        query = receivedQuery
-        return [{ id: 'SC-1', reservationId: RESERVATION_ID, statusreserva: 'confirmado' }]
-      },
-    },
+    config: loadConfig({}),
+    vtexClient: { getMasterDataDocument: async (value) => {
+      query = value
+      return { id: value.id, reservationId: ID, quantity: 4, statusreserva: 'confirmado' }
+    } },
   })
-
-  const result = await service.getStatusByReservationId(` ${RESERVATION_ID} `)
-
-  assert.equal(query.entity, 'SC')
-  assert.equal(query.field, 'reservationId')
-  assert.equal(query.value, RESERVATION_ID)
-  assert.deepEqual(result, {
-    reservationId: RESERVATION_ID,
-    status: 'confirmado',
-    confirmed: true,
-    quantity: 1,
-  })
+  const result = await service.getStatusByReservationId(ID)
+  assert.equal(query.id, getReservationDocumentId(ID))
+  assert.deepEqual(result, { reservationId: ID, quantity: 4, status: 'confirmado', confirmed: true })
 })
 
-test('rechaza un reservationId invalido', async () => {
-  const service = new ReservationQueryService({ config, vtexClient: {} })
-
-  await assert.rejects(
-    service.getStatusByReservationId('id con espacios'),
-    (error) => error.statusCode === 400 && error.code === 'invalid_reservation_id',
-  )
+test('rechaza un identificador invalido', async () => {
+  const service = new ReservationQueryService({ config: loadConfig({}), vtexClient: {} })
+  await assert.rejects(service.getStatusByReservationId('id con espacios'),
+    (error) => error.code === 'invalid_reservation_id')
 })
 
-test('responde 404 cuando reservationId no tiene una reserva', async () => {
+test('responde 404 si SC no contiene la reserva', async () => {
   const service = new ReservationQueryService({
-    config,
-    vtexClient: { findMasterDataDocuments: async () => [] },
+    config: loadConfig({}),
+    vtexClient: { getMasterDataDocument: async () => { throw Object.assign(new Error(), { status: 404 }) } },
   })
-
-  await assert.rejects(
-    service.getStatusByReservationId(RESERVATION_ID),
-    (error) => error.statusCode === 404 && error.code === 'reservation_not_found',
-  )
+  await assert.rejects(service.getStatusByReservationId(ID),
+    (error) => error.code === 'reservation_not_found')
 })
 
-test('agrupa varios cupos con el mismo reservationId', async () => {
+test('devuelve cancelado cuando se cambia manualmente SC', async () => {
   const service = new ReservationQueryService({
-    config,
-    vtexClient: {
-      findMasterDataDocuments: async () => [
-        { id: 'SC-1', statusreserva: 'confirmado' },
-        { id: 'SC-2', statusreserva: 'confirmado' },
-      ],
-    },
+    config: loadConfig({}),
+    vtexClient: { getMasterDataDocument: async () => ({ reservationId: ID, quantity: 3, statusreserva: 'cancelado' }) },
   })
-
-  const result = await service.getStatusByReservationId(RESERVATION_ID)
-
-  assert.deepEqual(result, {
-    reservationId: RESERVATION_ID,
-    status: 'confirmado',
-    confirmed: true,
-    quantity: 2,
-  })
-})
-
-test('indica estado parcial cuando no todos los cupos estan confirmados', async () => {
-  const service = new ReservationQueryService({
-    config,
-    vtexClient: {
-      findMasterDataDocuments: async () => [
-        { id: 'SC-1', statusreserva: 'confirmado' },
-        { id: 'SC-2', statusreserva: 'pendiente' },
-      ],
-    },
-  })
-
-  const result = await service.getStatusByReservationId(RESERVATION_ID)
-
-  assert.equal(result.status, 'parcial')
+  const result = await service.getStatusByReservationId(ID)
+  assert.equal(result.status, 'cancelado')
+  assert.equal(result.quantity, 3)
   assert.equal(result.confirmed, false)
-  assert.equal(result.quantity, 2)
+})
+
+test('no oculta un fallo temporal de lectura como reserva inexistente', async () => {
+  const failure = Object.assign(new Error('VTEX unavailable'), { status: 503 })
+  const service = new ReservationQueryService({
+    config: loadConfig({}), vtexClient: { getMasterDataDocument: async () => { throw failure } },
+  })
+  await assert.rejects(service.getStatusByReservationId(ID), failure)
 })
